@@ -1,12 +1,13 @@
-'use client'; 
+import Link from "next/link";
+import { Container, Button } from "react-bootstrap";
 
-import React from "react";
-
-// Components
-
-export default function Home() {
+export default function HomePage() {
   return (
-    <div>
-    </div>
+    <Container className="mt-5 text-white text-center">
+      <h1>Welcome to Realms</h1>
+      <Button variant="primary" as={Link} href="/adventure-setup">
+        Host Adventure
+      </Button>
+    </Container>
   );
 }
