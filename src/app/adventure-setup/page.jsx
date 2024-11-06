@@ -48,6 +48,7 @@ export default function AdventureSetup() {
         context,
         createdAt: new Date(),
         hostUid: user.uid,
+				messages: [],
         players: [
           {
             userId: user.uid,
