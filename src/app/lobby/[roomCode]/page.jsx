@@ -60,6 +60,29 @@ export default function Lobby({ params }) {
     }
   };
 
+    // Add player to room when they join (if not already added)
+    useEffect(() => {
+      if (user && roomData && !roomData.players.some((player) => player.userId === user.uid)) {
+        const fetchAndAddPlayer = async () => {
+          const userRef = doc(db, "users", user.uid);
+          const userDoc = await getDoc(userRef);
+  
+          const username = userDoc.exists() ? userDoc.data().username : "Guest";
+  
+          const updatedPlayers = [
+            ...roomData.players,
+            { userId: user.uid, username, characterName: null, characterType: null, isReady: false },
+          ];
+  
+          await updateDoc(doc(db, "rooms", roomData.id), {
+            players: updatedPlayers,
+          });
+        };
+  
+        fetchAndAddPlayer();
+      }
+    }, [user, roomData]);
+
   // Check if all players are ready
   const allPlayersReady = roomData && roomData.players.every(player => player.isReady);
 
