@@ -2,38 +2,49 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { auth, db } from "../firebase/config";
+import { auth } from "../firebase/config";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { createUserProfile, isUsernameTaken } from "../utils/firebaseUsers";
 import { Container, Row, Col, Form, Button, Alert } from "react-bootstrap";
 
 export default function LoginPage() {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
+	const [username, setUsername] = useState("");
 	const [isSignup, setIsSignup] = useState(false);
 	const [error, setError] = useState("");
+	const router = useRouter();
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 		setError("");
-	
+
 		try {
 			if (isSignup) {
+				// Convert username to lowercase
+				const lowercaseUsername = username.toLowerCase();
+
+				// Check if username is already taken
+				const usernameExists = await isUsernameTaken(lowercaseUsername);
+				if (usernameExists) {
+					setError("Username is already taken. Please choose another one.");
+					return;
+				}
+
+				// Create user in Firebase Auth
 				const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 				const user = userCredential.user;
-				await setDoc(doc(db, "users", user.uid), {
-					email: user.email,
-					createdAt: new Date(),
-					username: "",
-					profilePicture: "",
-					isAdmin: false,
-				});
+
+				// Create user profile in Firestore
+				await createUserProfile(user, lowercaseUsername);
+
 				alert("Account created successfully!");
 			} else {
+				// Log in existing user
 				await signInWithEmailAndPassword(auth, email, password);
 				alert("Logged in successfully!");
 			}
-	
+
 			// Redirect to home page
 			router.push("/");
 		} catch (error) {
@@ -70,6 +81,19 @@ export default function LoginPage() {
 								required
 							/>
 						</Form.Group>
+
+						{/* Show username field only during sign-up */}
+						{isSignup && (
+							<Form.Group className="mb-3" controlId="username">
+								<Form.Label>Username</Form.Label>
+								<Form.Control
+									type="text"
+									value={username}
+									onChange={(e) => setUsername(e.target.value)}
+									required
+								/>
+							</Form.Group>
+						)}
 
 						<Button variant="primary" type="submit" className="w-100">
 							{isSignup ? "Sign Up" : "Log In"}
