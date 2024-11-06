@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { db } from "../../firebase/config"; 
 import { doc, getDoc } from "firebase/firestore";
@@ -9,7 +9,7 @@ export default function ChatLayout({ params }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [roomData, setRoomData] = useState(null);
-  const [isIntroGenerated, setIsIntroGenerated] = useState(false); 
+  const introGeneratedRef = useRef(false); // Use useRef to track intro generation
 
   useEffect(() => {
     const fetchRoomData = async () => {
@@ -23,8 +23,9 @@ export default function ChatLayout({ params }) {
           console.log("Room data fetched:", data);
 
           // Only generate the intro message if it hasn't been generated yet
-          if (!isIntroGenerated) {
+          if (!introGeneratedRef.current) {
             await generateIntroMessage(data);
+            introGeneratedRef.current = true; // Set the ref to true after generating the intro
           }
         }
       } catch (error) {
@@ -33,7 +34,7 @@ export default function ChatLayout({ params }) {
     };
 
     fetchRoomData();
-  }, [params.roomCode, isIntroGenerated]);
+  }, [params.roomCode]); // Removed `isIntroGenerated` from the dependencies
 
   const generateIntroMessage = async (data) => {
     const prompt = `You are a creative dungeon master. Introduce the adventure for a character named ${data.characterName}, a ${data.characterType} in ${data.adventureSetting}. Context: ${data.context || 'No specific context provided.'}`;
@@ -50,7 +51,6 @@ export default function ChatLayout({ params }) {
         },
         ...prevMessages
       ]);
-      setIsIntroGenerated(true);
     } catch (error) {
       console.error('Error fetching OpenAI introduction:', error);
       setMessages(prevMessages => [
