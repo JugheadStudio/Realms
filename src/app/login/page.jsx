@@ -62,6 +62,18 @@ export default function LoginPage() {
 					{error && <Alert variant="danger">{error}</Alert>}
 
 					<Form onSubmit={handleSubmit}>
+						{isSignup && (
+							<Form.Group className="mb-3" controlId="username">
+								<Form.Label>Username</Form.Label>
+								<Form.Control
+									type="text"
+									value={username}
+									onChange={(e) => setUsername(e.target.value)}
+									required
+								/>
+							</Form.Group>
+						)}
+
 						<Form.Group className="mb-3" controlId="email">
 							<Form.Label>Email address</Form.Label>
 							<Form.Control
@@ -81,19 +93,6 @@ export default function LoginPage() {
 								required
 							/>
 						</Form.Group>
-
-						{/* Show username field only during sign-up */}
-						{isSignup && (
-							<Form.Group className="mb-3" controlId="username">
-								<Form.Label>Username</Form.Label>
-								<Form.Control
-									type="text"
-									value={username}
-									onChange={(e) => setUsername(e.target.value)}
-									required
-								/>
-							</Form.Group>
-						)}
 
 						<Button variant="primary" type="submit" className="w-100">
 							{isSignup ? "Sign Up" : "Log In"}

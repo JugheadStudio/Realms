@@ -1,6 +1,8 @@
+'use client';  // Ensure the file is marked as a client component
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { auth } from "../app/firebase/config"; // Ensure this path matches your Firebase setup
+import { auth } from "../app/firebase/config";
 
 export function useAuthProtection() {
   const router = useRouter();
@@ -8,13 +10,12 @@ export function useAuthProtection() {
   useEffect(() => {
     // Listen for changes to the user's authentication state
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      // If no user is logged in, redirect to the login page
       if (!user) {
-        router.push("/login");
+        router.push("/login");  // Redirect to the login page if not authenticated
       }
     });
 
-    // Clean up the subscription when the component unmounts
+    // Clean up the subscription on unmount
     return () => unsubscribe();
   }, [router]);
 }

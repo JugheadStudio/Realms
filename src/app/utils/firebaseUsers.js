@@ -16,6 +16,7 @@ export async function createUserProfile(user, username) {
       createdAt: serverTimestamp(),
       friends: [],
       friendRequests: [],
+      uid: user.uid,
     });
   } catch (error) {
     console.error("Error creating user profile:", error);
