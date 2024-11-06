@@ -60,44 +60,71 @@ export default function Lobby({ params }) {
     }
   };
 
-    // Add player to room when they join (if not already added)
-    useEffect(() => {
-      if (user && roomData && !roomData.players.some((player) => player.userId === user.uid)) {
-        const fetchAndAddPlayer = async () => {
-          const userRef = doc(db, "users", user.uid);
-          const userDoc = await getDoc(userRef);
-  
-          const username = userDoc.exists() ? userDoc.data().username : "Guest";
-  
-          const updatedPlayers = [
-            ...roomData.players,
-            { userId: user.uid, username, characterName: null, characterType: null, isReady: false },
-          ];
-  
-          await updateDoc(doc(db, "rooms", roomData.id), {
-            players: updatedPlayers,
-          });
-        };
-  
-        fetchAndAddPlayer();
-      }
-    }, [user, roomData]);
+  // Add player to room when they join (if not already added)
+  useEffect(() => {
+    if (user && roomData && !roomData.players.some((player) => player.userId === user.uid)) {
+      const fetchAndAddPlayer = async () => {
+        const userRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userRef);
+
+        const username = userDoc.exists() ? userDoc.data().username : "Guest";
+
+        const updatedPlayers = [
+          ...roomData.players,
+          { userId: user.uid, username, characterName: null, characterType: null, isReady: false },
+        ];
+
+        await updateDoc(doc(db, "rooms", roomData.id), {
+          players: updatedPlayers,
+        });
+      };
+
+      fetchAndAddPlayer();
+    }
+  }, [user, roomData]);
 
   // Check if all players are ready
   const allPlayersReady = roomData && roomData.players.every(player => player.isReady);
 
   const handleStartAdventure = async () => {
     if (!roomData) return;
-
+  
     try {
+      // Update all players to "inAdventure" status
+      const updatedPlayers = roomData.players.map((player) => ({
+        ...player,
+        status: "inAdventure", // Update player status to inAdventure
+      }));
+  
+      // Update the room document in Firestore to indicate the adventure has started
       await updateDoc(doc(db, "rooms", roomData.id), {
-        // Handle any pre-start actions here
+        players: updatedPlayers,
+        isStarted: true, // Flag to indicate the adventure has started
       });
-      router.push(`/room/${roomData.id}`);
+  
     } catch (error) {
       console.error("Error starting adventure:", error);
     }
   };
+
+  
+  useEffect(() => {
+    if (!roomData) return;
+  
+    console.log("Room Data:", roomData); // Log roomData to ensure id is set correctly
+  
+    const roomRef = doc(db, "rooms", roomData.id);
+  
+    const unsubscribe = onSnapshot(roomRef, (snapshot) => {
+      const room = snapshot.data();
+      if (room.isStarted && roomData.id) {
+        console.log("Redirecting to room:", roomData.id); // Log the room ID
+        router.push(`/room/${roomData.id}`);
+      }
+    });
+  
+    return () => unsubscribe();
+  }, [roomData, router]);  
 
   const handleCharacterSetup = () => {
     setShowCharacterModal(true);
