@@ -17,7 +17,7 @@ export default function Lobby({ params }) {
       if (doc.exists()) {
         setRoomData({ id: doc.id, ...doc.data() });
       } else {
-        console.log("No such document!");
+        console.log("Room not found!");
       }
     });
 

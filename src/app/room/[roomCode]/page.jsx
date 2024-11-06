@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useAuthProtection } from "../../../hooks/useAuthProtection";
 import { db } from "../../firebase/config"; 
 import { doc, getDoc } from "firebase/firestore";
 
@@ -10,6 +9,7 @@ export default function ChatLayout({ params }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [roomData, setRoomData] = useState(null);
+  const [isIntroGenerated, setIsIntroGenerated] = useState(false); 
 
   useEffect(() => {
     const fetchRoomData = async () => {
@@ -20,16 +20,12 @@ export default function ChatLayout({ params }) {
         if (roomSnapshot.exists()) {
           const data = roomSnapshot.data();
           setRoomData(data);
+          console.log("Room data fetched:", data);
 
-          // Generate the initial introduction message using OpenAI
-          const initialMessage = await generateIntroMessage(data);
-          setMessages(prevMessages => [
-            ...prevMessages,
-            {
-              role: "system",
-              content: initialMessage,
-            }
-          ]);
+          // Only generate the intro message if it hasn't been generated yet
+          if (!isIntroGenerated) {
+            await generateIntroMessage(data);
+          }
         }
       } catch (error) {
         console.error("Error fetching room data:", error);
@@ -37,9 +33,8 @@ export default function ChatLayout({ params }) {
     };
 
     fetchRoomData();
-  }, [params.roomCode]);
+  }, [params.roomCode, isIntroGenerated]);
 
-  // Function to generate the introductory message from OpenAI
   const generateIntroMessage = async (data) => {
     const prompt = `You are a creative dungeon master. Introduce the adventure for a character named ${data.characterName}, a ${data.characterType} in ${data.adventureSetting}. Context: ${data.context || 'No specific context provided.'}`;
 
@@ -47,10 +42,24 @@ export default function ChatLayout({ params }) {
       const response = await axios.post('/api/openai', {
         message: prompt,
       });
-      return response.data.content; // Adjust if your API response structure differs
+      const initialMessage = response.data.content;
+      setMessages(prevMessages => [
+        {
+          role: "system",
+          content: initialMessage,
+        },
+        ...prevMessages
+      ]);
+      setIsIntroGenerated(true);
     } catch (error) {
       console.error('Error fetching OpenAI introduction:', error);
-      return "Welcome to your adventure!"; // Fallback message
+      setMessages(prevMessages => [
+        {
+          role: "system",
+          content: "Welcome to your adventure!",
+        },
+        ...prevMessages
+      ]);
     }
   };
 
@@ -59,7 +68,7 @@ export default function ChatLayout({ params }) {
     if (input.trim() === "") return;
 
     const userMessage = { role: 'user', content: input };
-    setMessages([...messages, userMessage]);
+    setMessages(prevMessages => [...prevMessages, userMessage]);
     setInput("");
 
     try {

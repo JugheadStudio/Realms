@@ -36,7 +36,7 @@ const Chat = () => {
       <div className="chat-window">
         {messages.map((msg, index) => (
           <div key={index} className={msg.role === "user" ? "user-message" : "api-message"}>
-            <strong>{msg.role === "user" ? "You" : "Assistant"}:</strong> {msg.content}
+            <strong>{msg.role === "user" ? "You" : "Dungeon Master"}:</strong> {msg.content}
           </div>
         ))}
       </div>

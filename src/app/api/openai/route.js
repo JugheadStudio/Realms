@@ -12,9 +12,9 @@ export async function POST(req) {
     ],
   });
 
-  const assistantMessage = completion.choices[0].message;
+  const apiResponse = completion.choices[0].message;
 
-  return new Response(JSON.stringify(assistantMessage), {
+  return new Response(JSON.stringify(apiResponse), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
