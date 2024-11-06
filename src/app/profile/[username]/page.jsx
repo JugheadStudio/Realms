@@ -15,7 +15,7 @@ const ProfilePage = ({ params }) => {
   const [error, setError] = useState(null);
   const [friendRequestSent, setFriendRequestSent] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
-  const [friendRequests, setFriendRequests] = useState([]);
+  const [friendRequests, setFriendRequests] = useState({ received: [], sent: [] });
 
   const handleFriendsClose = () => setShowFriends(false);
   const handleFriendsShow = () => setShowFriends(true);
@@ -95,6 +95,12 @@ const ProfilePage = ({ params }) => {
       const friendRequestRef = doc(db, "friendRequests", `${user.uid}_${profileData.uid}`);
       await setDoc(friendRequestRef, friendRequest);
 
+      // Optimistically update the state to reflect that the request was sent
+      setFriendRequests((prevState) => ({
+        ...prevState,
+        sent: [...prevState.sent, friendRequest],
+      }));
+
       setFriendRequestSent(true);
       alert("Friend request sent!");
     } catch (error) {
@@ -131,6 +137,12 @@ const ProfilePage = ({ params }) => {
             (request) => request.receiverId !== user.uid
           ), // Remove the accepted request
         });
+
+        // Remove the accepted request from the state
+        setFriendRequests((prevState) => ({
+          received: prevState.received.filter((request) => request.senderId !== senderId),
+          sent: prevState.sent,
+        }));
 
         alert("Friend request accepted!");
       } else {
@@ -169,6 +181,12 @@ const ProfilePage = ({ params }) => {
           ),
         });
 
+        // Remove the declined request from the state
+        setFriendRequests((prevState) => ({
+          received: prevState.received.filter((request) => request.id !== requestId),
+          sent: prevState.sent,
+        }));
+
         alert("Friend request declined.");
       } else {
         alert("User not found.");
@@ -181,8 +199,6 @@ const ProfilePage = ({ params }) => {
 
   const handleCancelSentRequest = async (requestId, receiverId) => {
     try {
-      console.log("Receiver ID:", receiverId);
-
       const userRef = doc(db, "users", user.uid);
       const receiverRef = doc(db, "users", receiverId);
 
@@ -193,9 +209,6 @@ const ProfilePage = ({ params }) => {
         const userData = userSnapshot.data();
         const receiverData = receiverSnapshot.data();
 
-        console.log("User Data:", userData);
-        console.log("Receiver Data:", receiverData);
-
         if (userData.friendRequests && receiverData.friendRequests) {
           // Filter and update the sender's and receiver's friendRequests arrays
           const updatedUserRequests = userData.friendRequests.filter(
@@ -205,12 +218,15 @@ const ProfilePage = ({ params }) => {
             (request) => request.id !== requestId
           );
 
-          console.log("Updated User Requests:", updatedUserRequests);
-          console.log("Updated Receiver Requests:", updatedReceiverRequests);
-
           // Update the documents
           await updateDoc(userRef, { friendRequests: updatedUserRequests });
           await updateDoc(receiverRef, { friendRequests: updatedReceiverRequests });
+
+          // Remove the canceled request from the state
+          setFriendRequests((prevState) => ({
+            received: prevState.received,
+            sent: prevState.sent.filter((request) => request.id !== requestId),
+          }));
 
           alert("Friend request canceled.");
         } else {

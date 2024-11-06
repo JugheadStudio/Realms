@@ -10,6 +10,9 @@ const FriendsModal = ({ show, onHide, userId }) => {
 	const [searchResults, setSearchResults] = useState([]);
 	const [loading, setLoading] = useState(false);
 
+	// State to store the friend's data (username)
+	const [friendDetails, setFriendDetails] = useState([]);
+
 	useEffect(() => {
 		const fetchUserData = async () => {
 			if (!userId) return;
@@ -25,6 +28,31 @@ const FriendsModal = ({ show, onHide, userId }) => {
 			fetchUserData().finally(() => setLoading(false));
 		}
 	}, [userId, show]);
+
+	// Fetch friends' data (username) based on friendId
+	useEffect(() => {
+		const fetchFriendsData = async () => {
+			if (!friends.length) return; // Don't fetch if there are no friends
+
+			try {
+				const friendsData = await Promise.all(
+					friends.map(async (friendId) => {
+						const friendDoc = await getDoc(doc(db, "users", friendId));
+						if (friendDoc.exists()) {
+							return { id: friendId, username: friendDoc.data().username };
+						}
+						return null;
+					})
+				);
+
+				setFriendDetails(friendsData.filter((friend) => friend !== null)); // Filter out null values (if any)
+			} catch (error) {
+				console.error("Error fetching friends data:", error);
+			}
+		};
+
+		fetchFriendsData();
+	}, [friends]);
 
 	const handleSearch = async (e) => {
 		const search = e.target.value.toLowerCase();
@@ -103,10 +131,16 @@ const FriendsModal = ({ show, onHide, userId }) => {
 					<p>No friends yet</p>
 				) : (
 					<ListGroup>
-						{friends.map((friendId) => (
-							<ListGroup.Item key={friendId}>Friend UID: {friendId}</ListGroup.Item>
+						{friendDetails.map((friend) => (
+							<ListGroup.Item key={friend.id}>
+								{friend.username}
+								<Button variant="link" onClick={() => console.log("View Profile", friend.id)}>
+									View Profile
+								</Button>
+							</ListGroup.Item>
 						))}
 					</ListGroup>
+
 				)}
 
 				<Form className="mt-3">
@@ -134,7 +168,6 @@ const FriendsModal = ({ show, onHide, userId }) => {
 						</ListGroup.Item>
 					))
 				) : (
-					// Display message when no search results are found and searchQuery has at least 3 characters
 					searchQuery.length >= 3 && (
 						<p>No users found matching "{searchQuery}"</p>
 					)
