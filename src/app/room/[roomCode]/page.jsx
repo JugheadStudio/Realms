@@ -11,7 +11,7 @@ export default function ChatLayout({ params }) {
   const [input, setInput] = useState("");
   const [roomData, setRoomData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [usernames, setUsernames] = useState({}); 
+  const [usernames, setUsernames] = useState({});
   const introGeneratedRef = useRef(false);
 
   useEffect(() => {
@@ -24,7 +24,10 @@ export default function ChatLayout({ params }) {
           const data = roomSnapshot.data();
           setRoomData(data);
           setMessages(data.messages || []);
-          
+
+          console.log(data);
+
+
           // Check if intro message hasn't been generated yet and room is loading for the first time
           if (!data.messages || data.messages.length === 0) {
             generateIntroMessage(data);
@@ -83,14 +86,20 @@ export default function ChatLayout({ params }) {
     setLoading(true); // Set loading to true while generating message
     introGeneratedRef.current = true; // Mark intro as generated
 
-    const playerDetails = data.players.map(player => `${player.username} (Character: ${player.characterName}, Class: ${player.characterClass})`).join(", ");
+    const playerDetails = data.players.map(player => `${player.username} (Character: ${player.characterName}, Class: ${player.characterType}, BackStory: ${player.characterBackstory})`).join(", ");
     const prompt = `
-      You are a creative dungeon master. Introduce the adventure for the following players:
+      You are a creative dungeon master.
+      The title of the adventure is: ${data.adventureTitle},
+      Introduce the adventure for the following players:
       ${playerDetails}. 
-      World: ${data.adventureSetting}, 
-      Context: ${data.context || 'No specific context provided.'}
+      The adventure is set in: ${data.adventureSetting},
+      Some Lore about the world: ${data.worldLore || 'Nothing specific.'},
+      Context: ${data.context || 'No specific context.'},
+      Plot Line: ${data.plot || 'No specific plot line.'},
     `;
 
+    console.log(prompt);
+    
     try {
       const response = await axios.post('/api/openai', { message: prompt });
       const introMessage = response.data.content;
@@ -150,7 +159,8 @@ export default function ChatLayout({ params }) {
         userId: user.uid,
         content: input,
         role: "user",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        username,
       };
 
       setMessages(prevMessages => [...prevMessages, { ...userMessage, username }]);
@@ -164,13 +174,14 @@ export default function ChatLayout({ params }) {
       const botMessage = response.data;
       setMessages(prevMessages => [...prevMessages, botMessage]);
 
-      await saveMessagesToDatabase(userMessage, botMessage);
+      // Pass the current player's character name to saveMessagesToDatabase
+      await saveMessagesToDatabase(userMessage, botMessage, currentPlayer.characterName);
     } catch (error) {
       console.error('Error sending message:', error);
     }
   };
 
-  const saveMessagesToDatabase = async (userMessage, botMessage) => {
+  const saveMessagesToDatabase = async (userMessage, botMessage, characterName) => {
     try {
       const roomRef = doc(db, "rooms", params.roomCode);
       const roomSnapshot = await getDoc(roomRef);
@@ -182,17 +193,18 @@ export default function ChatLayout({ params }) {
       const roomData = roomSnapshot.data();
       const updatedMessages = [
         ...roomData.messages,
-        { ...userMessage, role: "user" },
+        { ...userMessage, role: "user", characterName }, // Use player.characterName here
         { ...botMessage, role: "system" }
       ];
 
       await updateDoc(roomRef, {
-        messages: updatedMessages
+        messages: updatedMessages,
       });
     } catch (error) {
       console.error("Error saving messages to Firestore:", error);
     }
   };
+
 
   return (
     <div className="flex flex-col h-100">
@@ -206,11 +218,15 @@ export default function ChatLayout({ params }) {
                 key={index}
                 className={`p-4 rounded-lg ${message.role === 'user' ? 'bg-blue-500 text-white self-end' : 'bg-gray-300 self-start'}`}
               >
-                <strong>{message.role === 'user' ? usernames[message.userId] || 'Unknown User' : 'Dungeon Master'}:</strong> {message.content}
+                <strong>
+                  {message.characterName ? `${message.characterName} (${message.username || 'Unknown User'})` : 'Dungeon Master'}:
+                </strong>
+                {message.content}
               </div>
             ))}
           </div>
         )}
+
       </div>
       <form className="p-4 flex" onSubmit={handleSendMessage}>
         <input
