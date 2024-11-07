@@ -3,15 +3,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { db } from "../../firebase/config";
-import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, getDoc, updateDoc, arrayUnion, onSnapshot } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 export default function ChatLayout({ params }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [roomData, setRoomData] = useState(null);
-  const [loading, setLoading] = useState(false); // Add loading state to prevent duplicate requests
-  const introGeneratedRef = useRef(false); // Use ref to keep track of intro generation state
+  const [loading, setLoading] = useState(false);
+  const [usernames, setUsernames] = useState({}); 
+  const introGeneratedRef = useRef(false);
 
   useEffect(() => {
     const fetchRoomData = async () => {
@@ -26,7 +27,7 @@ export default function ChatLayout({ params }) {
           
           // Check if intro message hasn't been generated yet and room is loading for the first time
           if (!data.messages || data.messages.length === 0) {
-            generateIntroMessage(data); // Call to generate the intro message
+            generateIntroMessage(data);
           }
         }
       } catch (error) {
@@ -35,6 +36,44 @@ export default function ChatLayout({ params }) {
     };
 
     fetchRoomData();
+  }, [params.roomCode]);
+
+  useEffect(() => {
+    // Fetch usernames for all players in the room when the roomData is loaded
+    if (roomData) {
+      const fetchUsernames = async () => {
+        const usernamesMap = {};
+        for (let player of roomData.players) {
+          try {
+            const userDoc = await getDoc(doc(db, "users", player.userId));
+            if (userDoc.exists()) {
+              usernamesMap[player.userId] = userDoc.data().username;
+            }
+          } catch (error) {
+            console.error("Error fetching username:", error);
+          }
+        }
+        setUsernames(usernamesMap);
+      };
+
+      fetchUsernames();
+    }
+  }, [roomData]);
+
+  useEffect(() => {
+    if (!params.roomCode) return;
+
+    // Real-time listener to track changes in the room's messages
+    const roomRef = doc(db, "rooms", params.roomCode);
+    const unsubscribe = onSnapshot(roomRef, (roomSnapshot) => {
+      if (roomSnapshot.exists()) {
+        const data = roomSnapshot.data();
+        setMessages(data.messages || []);
+      }
+    });
+
+    // Cleanup the listener when the component is unmounted
+    return () => unsubscribe();
   }, [params.roomCode]);
 
   // Function to generate an intro message for the adventure
@@ -167,7 +206,7 @@ export default function ChatLayout({ params }) {
                 key={index}
                 className={`p-4 rounded-lg ${message.role === 'user' ? 'bg-blue-500 text-white self-end' : 'bg-gray-300 self-start'}`}
               >
-                <strong>{message.username || 'Dungeon Master'}:</strong> {message.content}
+                <strong>{message.role === 'user' ? usernames[message.userId] || 'Unknown User' : 'Dungeon Master'}:</strong> {message.content}
               </div>
             ))}
           </div>
