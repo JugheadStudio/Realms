@@ -6,6 +6,7 @@ import { db } from "../../firebase/config";
 import { doc, onSnapshot, updateDoc, arrayUnion, collection, getDocs, getDoc } from "firebase/firestore";  // <-- Add this import
 import { Container, Row, Col, Button, ListGroup, Modal, Form } from "react-bootstrap";
 import { useAuth } from "../../../hooks/useAuth";
+import axios from 'axios';
 
 export default function Lobby({ params }) {
   const [roomData, setRoomData] = useState(null);
@@ -87,26 +88,38 @@ export default function Lobby({ params }) {
   const allPlayersReady = roomData && roomData.players.every(player => player.isReady);
 
   const handleStartAdventure = async () => {
-    if (!roomData) return;
-
     try {
-      // Update all players to "inAdventure" status
-      const updatedPlayers = roomData.players.map((player) => ({
-        ...player,
-        status: "inAdventure",
-      }));
+      // Generate intro message only once when "Start Adventure" is clicked
+      const playerDetails = roomData.players.map(player => `${player.username} (Character: ${player.characterName}, Class: ${player.characterType}, BackStory: ${player.characterBackstory})`).join(", ");
+      const prompt = `
+        You are a creative dungeon master.
+        The title of the adventure is: ${roomData.adventureTitle},
+        Introduce the adventure for the following players:
+        ${playerDetails}. 
+        The adventure is set in: ${roomData.adventureSetting},
+        Some Lore about the world: ${roomData.worldLore || 'Nothing specific.'},
+        Context: ${roomData.context || 'No specific context.'},
+        Plot Line: ${roomData.plot || 'No specific plot line.'},
+      `;
 
-      // Update the room document in Firestore to indicate the adventure has started
-      await updateDoc(doc(db, "rooms", roomData.id), {
-        players: updatedPlayers,
-        isStarted: true,
+      const response = await axios.post('/api/openai', { message: prompt });
+      const introMessage = response.data.content;
+
+      // Store the intro message in Firestore
+      await updateDoc(doc(db, "rooms", params.roomCode), { // Use params.roomCode here
+        messages: arrayUnion({
+          role: "system",
+          content: introMessage,
+          timestamp: new Date().toISOString(),
+        }),
       });
 
+      // Redirect to the chat page after generating the intro message
+      router.push(`/room/${params.roomCode}`); // Use params.roomCode here as well
     } catch (error) {
-      console.error("Error starting adventure:", error);
+      console.error('Error generating introduction:', error);
     }
   };
-
 
   useEffect(() => {
     if (!roomData) return;
@@ -156,7 +169,7 @@ export default function Lobby({ params }) {
       await updateDoc(doc(db, "rooms", roomData.id), {
         players: updatedPlayers,
       });
-      handleCharacterSetupClose(); // Close the modal after submitting
+      handleCharacterSetupClose();
     } catch (error) {
       console.error("Error saving character:", error);
     }
@@ -174,10 +187,10 @@ export default function Lobby({ params }) {
                   <h3>{roomData.adventureTitle}</h3>
                 </div>
 
-                <div className="lobby-setting">
+                {/* <div className="lobby-setting">
                   <p>Adventure <strong>Setting</strong></p>
                   <h3>{roomData.adventureSetting}</h3>
-                </div>
+                </div> */}
 
                 <div className="lobby-code">
                   <div>
@@ -219,7 +232,7 @@ export default function Lobby({ params }) {
 
                   {roomData.hostUid === user.uid && (
                     <div className="mt-20">
-                      <Button variant="primary" className="w-100" onClick={handleStartAdventure} disabled={!allPlayersReady}>
+                      <Button variant="start" className="w-100" onClick={handleStartAdventure} disabled={!allPlayersReady}>
                         Start Adventure
                       </Button>
                     </div>
@@ -235,7 +248,7 @@ export default function Lobby({ params }) {
       </Row>
 
       {/* Character Setup Modal */}
-      <Modal show={showCharacterModal} onHide={handleCharacterSetupClose}>
+      <Modal show={showCharacterModal} onHide={handleCharacterSetupClose} centered>
         <Modal.Header closeButton>
           <Modal.Title>Character Setup</Modal.Title>
         </Modal.Header>
@@ -243,36 +256,21 @@ export default function Lobby({ params }) {
           <form onSubmit={handleCharacterSubmit}>
             <Form.Group controlId="characterName">
               <Form.Label>Character Name</Form.Label>
-              <Form.Control
-                type="text"
-                value={characterName}
-                onChange={(e) => setCharacterName(e.target.value)}
-                required
-              />
+              <Form.Control type="text" value={characterName} onChange={(e) => setCharacterName(e.target.value)} required />
             </Form.Group>
 
             <Form.Group controlId="characterType">
               <Form.Label>Character Type</Form.Label>
-              <Form.Control
-                type="text"
-                value={characterType}
-                onChange={(e) => setCharacterType(e.target.value)}
-                required
-              />
+              <Form.Control type="text" value={characterType} onChange={(e) => setCharacterType(e.target.value)} required />
             </Form.Group>
 
             <Form.Group controlId="characterBackstory">
               <Form.Label>Backstory (optional)</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                value={characterBackstory}
-                onChange={(e) => setCharacterBackstory(e.target.value)}
-              />
+              <Form.Control as="textarea" rows={3} value={characterBackstory} onChange={(e) => setCharacterBackstory(e.target.value)} />
             </Form.Group>
 
-            <div className="mt-3">
-              <Button variant="secondary" onClick={handleCharacterSetupClose}>
+            <div className="mt-20 d-flex justify-content-end">
+              <Button variant="secondary" className="mr-5" onClick={handleCharacterSetupClose}>
                 Close
               </Button>
               <Button variant="primary" type="submit">

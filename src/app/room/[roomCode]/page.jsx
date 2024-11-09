@@ -19,26 +19,19 @@ export default function ChatLayout({ params }) {
       try {
         const roomRef = doc(db, "rooms", params.roomCode);
         const roomSnapshot = await getDoc(roomRef);
-
+  
         if (roomSnapshot.exists()) {
           const data = roomSnapshot.data();
           setRoomData(data);
           setMessages(data.messages || []);
-
-          // console.log(data);
-
-          // Check if intro message hasn't been generated yet and room is loading for the first time
-          if (!data.messages || data.messages.length === 0) {
-            generateIntroMessage(data);
-          }
         }
       } catch (error) {
         console.error("Error fetching room data:", error);
       }
     };
-
+  
     fetchRoomData();
-  }, [params.roomCode]);
+  }, [params.roomCode]);  
 
   useEffect(() => {
     // Fetch usernames for all players in the room when the roomData is loaded
@@ -77,56 +70,6 @@ export default function ChatLayout({ params }) {
     // Cleanup the listener when the component is unmounted
     return () => unsubscribe();
   }, [params.roomCode]);
-
-  // Function to generate an intro message for the adventure
-  const generateIntroMessage = async (data) => {
-    if (loading || introGeneratedRef.current) return; // Prevent generating intro if loading or already generated
-
-    setLoading(true);
-    introGeneratedRef.current = true;
-
-    const playerDetails = data.players.map(player => `${player.username} (Character: ${player.characterName}, Class: ${player.characterType}, BackStory: ${player.characterBackstory})`).join(", ");
-    const prompt = `
-      You are a creative dungeon master.
-      The title of the adventure is: ${data.adventureTitle},
-      Introduce the adventure for the following players:
-      ${playerDetails}. 
-      The adventure is set in: ${data.adventureSetting},
-      Some Lore about the world: ${data.worldLore || 'Nothing specific.'},
-      Context: ${data.context || 'No specific context.'},
-      Plot Line: ${data.plot || 'No specific plot line.'},
-    `;
-
-    console.log(prompt);
-    
-    try {
-      const response = await axios.post('/api/openai', { message: prompt });
-      const introMessage = response.data.content;
-
-      // Store the intro message in Firestore if generated
-      await updateDoc(doc(db, "rooms", params.roomCode), {
-        messages: arrayUnion({
-          role: "system",
-          content: introMessage,
-          timestamp: new Date().toISOString()
-        })
-      });
-
-      // Add intro message to local state
-      setMessages(prevMessages => [
-        { role: "system", content: introMessage, timestamp: new Date().toISOString() },
-        ...prevMessages
-      ]);
-    } catch (error) {
-      console.error('Error generating introduction:', error);
-      setMessages(prevMessages => [
-        { role: "system", content: "Welcome to your adventure!", timestamp: new Date().toISOString() },
-        ...prevMessages
-      ]);
-    } finally {
-      setLoading(false); // Reset loading state after request completes
-    }
-  };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
