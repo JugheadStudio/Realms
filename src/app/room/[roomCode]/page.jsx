@@ -25,8 +25,7 @@ export default function ChatLayout({ params }) {
           setRoomData(data);
           setMessages(data.messages || []);
 
-          console.log(data);
-
+          // console.log(data);
 
           // Check if intro message hasn't been generated yet and room is loading for the first time
           if (!data.messages || data.messages.length === 0) {
@@ -83,8 +82,8 @@ export default function ChatLayout({ params }) {
   const generateIntroMessage = async (data) => {
     if (loading || introGeneratedRef.current) return; // Prevent generating intro if loading or already generated
 
-    setLoading(true); // Set loading to true while generating message
-    introGeneratedRef.current = true; // Mark intro as generated
+    setLoading(true);
+    introGeneratedRef.current = true;
 
     const playerDetails = data.players.map(player => `${player.username} (Character: ${player.characterName}, Class: ${player.characterType}, BackStory: ${player.characterBackstory})`).join(", ");
     const prompt = `
