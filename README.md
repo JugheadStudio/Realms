@@ -87,7 +87,7 @@ The most challenging part of development was ensuring smooth integration of the 
 * Prebuilt adventures that players can just jump in and enjoy
 
 ## Demonstration
-[Link to Demonstration Video](https://drive.google.com/file/d/1OYEiHpf0wDMtYgRVdi5_iefjPXA3_AJ9/view?usp=sharing)
+[Link to Demonstration Video](https://drive.google.com/file/d/1ktB2D5n4pv4Qz_5BEXyfNxWlEdT1EmB7/view?usp=sharing)
 
 ### License
 [MIT](LICENSE) © [Jughead Studio](https://github.com/JugheadStudio)
