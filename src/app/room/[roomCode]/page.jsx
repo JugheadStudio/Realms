@@ -69,7 +69,6 @@ export default function ChatLayout({ params }) {
     return () => unsubscribe();
   }, [params.roomCode]);
 
-  // Handle sending a message
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (input.trim() === "") return;
@@ -125,10 +124,27 @@ export default function ChatLayout({ params }) {
 
       // Save the user and bot messages to the database
       await saveMessagesToDatabase(userMessage, botMessage, currentPlayer.characterName);
+
+      // Send the bot message to the TTS API and play audio
+      await handleTTS(botMessage.content);
+
     } catch (error) {
       console.error('Error sending message:', error);
     }
   };
+
+  const handleTTS = async (text) => {
+    try {
+      const response = await axios.post('/tts', { text });
+  
+      // Convert the base64 response to audio and play it
+      const audioContent = response.data.audioContent;
+      const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+      audio.play();
+    } catch (error) {
+      console.error('Error with TTS:', error);
+    }
+  };  
 
   const saveMessagesToDatabase = async (userMessage, botMessage) => {
     try {
