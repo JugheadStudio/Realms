@@ -10,11 +10,12 @@ import axios from 'axios';
 
 export default function Lobby({ params }) {
   const [roomData, setRoomData] = useState(null);
-  const [isReady, setIsReady] = useState(false); // Local state for player's readiness
-  const [showCharacterModal, setShowCharacterModal] = useState(false); // State for character setup modal
+  const [isReady, setIsReady] = useState(false);
+  const [showCharacterModal, setShowCharacterModal] = useState(false);
   const [characterName, setCharacterName] = useState("");
   const [characterType, setCharacterType] = useState("");
   const [characterBackstory, setCharacterBackstory] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
 
@@ -89,7 +90,8 @@ export default function Lobby({ params }) {
 
   const handleStartAdventure = async () => {
     try {
-      // Generate intro message only once when "Start Adventure" is clicked
+      setLoading(true); // Set loading to true before the API call
+
       const playerDetails = roomData.players.map(player => `${player.username} (Character: ${player.characterName}, Class: ${player.characterType}, BackStory: ${player.characterBackstory})`).join(", ");
       const prompt = `
         You are a creative dungeon master.
@@ -106,20 +108,23 @@ export default function Lobby({ params }) {
       const introMessage = response.data.content;
 
       // Store the intro message in Firestore
-      await updateDoc(doc(db, "rooms", params.roomCode), { // Use params.roomCode here
+      await updateDoc(doc(db, "rooms", params.roomCode), {
         messages: arrayUnion({
           role: "system",
           content: introMessage,
-          timestamp: new Date().toISOString(),
-        }),
+          timestamp: new Date().toISOString()
+        })
       });
 
       // Redirect to the chat page after generating the intro message
-      router.push(`/room/${params.roomCode}`); // Use params.roomCode here as well
+      router.push(`/room/${params.roomCode}`);
     } catch (error) {
       console.error('Error generating introduction:', error);
+    } finally {
+      setLoading(false); // Set loading to false after the API call finishes
     }
   };
+
 
   useEffect(() => {
     if (!roomData) return;
@@ -187,11 +192,6 @@ export default function Lobby({ params }) {
                   <h3>{roomData.adventureTitle}</h3>
                 </div>
 
-                {/* <div className="lobby-setting">
-                  <p>Adventure <strong>Setting</strong></p>
-                  <h3>{roomData.adventureSetting}</h3>
-                </div> */}
-
                 <div className="lobby-code">
                   <div>
                     <p>Room <strong>Code</strong></p>
@@ -232,9 +232,20 @@ export default function Lobby({ params }) {
 
                   {roomData.hostUid === user.uid && (
                     <div className="mt-20">
-                      <Button variant="start" className="w-100" onClick={handleStartAdventure} disabled={!allPlayersReady}>
-                        Start Adventure
-                      </Button>
+                      {loading ? (
+                        <Button variant="primary" className="w-100" disabled>
+                          <div className="d-flex align-items-center justify-content-center">
+                            <div className="spinner-border text-light me-2" role="status">
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                            Loading...
+                          </div>
+                        </Button>
+                      ) : (
+                        <Button variant="start" className="w-100" onClick={handleStartAdventure} disabled={!allPlayersReady}>
+                          Start Adventure
+                        </Button>
+                      )}
                     </div>
                   )}
 

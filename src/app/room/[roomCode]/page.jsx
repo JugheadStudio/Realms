@@ -156,10 +156,7 @@ export default function ChatLayout({ params }) {
         ) : (
           <div className="flex flex-col space-y-4">
             {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`p-4 rounded-lg ${message.role === 'user' ? 'bg-blue-500 text-white self-end' : 'bg-gray-300 self-start'}`}
-              >
+              <div key={index} className={`p-4 rounded-lg ${message.role === 'user' ? 'bg-blue-500 text-white self-end' : 'bg-gray-300 self-start'}`}>
                 <strong>
                   {message.characterName ? `${message.characterName} (${message.username || 'Unknown User'})` : 'Dungeon Master'}:
                 </strong>
@@ -171,17 +168,8 @@ export default function ChatLayout({ params }) {
 
       </div>
       <form className="p-4 flex" onSubmit={handleSendMessage}>
-        <input
-          className="flex-grow p-2 border text-black rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-          type="text"
-          value={input}
-          placeholder="Type your message..."
-          onChange={(e) => setInput(e.target.value)}
-        />
-        <button
-          type="submit"
-          className="ml-4 bg-blue-500 text-white px-4 py-2 rounded-lg"
-        >
+        <input className="flex-grow p-2 border text-black rounded-lg focus:outline-none focus:ring focus:ring-blue-400" type="text" value={input} placeholder="Type your message..." onChange={(e) => setInput(e.target.value)} />
+        <button type="submit" className="ml-4 bg-blue-500 text-white px-4 py-2 rounded-lg">
           Send
         </button>
       </form>
