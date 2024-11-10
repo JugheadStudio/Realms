@@ -14,7 +14,10 @@ export default function Lobby({ params }) {
   const [showCharacterModal, setShowCharacterModal] = useState(false);
   const [characterName, setCharacterName] = useState("");
   const [characterType, setCharacterType] = useState("");
-  const [characterBackstory, setCharacterBackstory] = useState("");
+  const [characterBackstory, setCharacterBackstory] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState()
+  const [friends, setFriends] = useState([]);
+  const [friendDetails, setFriendDetails] = useState([]);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
@@ -125,7 +128,6 @@ export default function Lobby({ params }) {
     }
   };
 
-
   useEffect(() => {
     if (!roomData) return;
 
@@ -144,13 +146,69 @@ export default function Lobby({ params }) {
     return () => unsubscribe();
   }, [roomData, router]);
 
-  const handleCharacterSetup = () => {
-    setShowCharacterModal(true);
+  // Fetch friend data
+  const fetchFriends = async () => {
+    if (!user) return;
+
+    setLoading(true);
+
+    try {
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const friendsList = userSnap.data().friends || [];
+        setFriends(friendsList);
+
+        // Retrieve friend details for each friend
+        const friendPromises = friendsList.map(async (friendId) => {
+          const friendRef = doc(db, "users", friendId);
+          const friendSnap = await getDoc(friendRef);
+          if (friendSnap.exists()) {
+            return { id: friendId, ...friendSnap.data() };
+          }
+          return null;
+        });
+
+        const friendDetails = await Promise.all(friendPromises);
+        setFriendDetails(friendDetails.filter(Boolean)); // Filter out null values
+      }
+    } catch (error) {
+      console.error("Error fetching friends:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCharacterSetupClose = () => {
-    setShowCharacterModal(false);
+  useEffect(() => {
+    if (showInviteModal) {
+      fetchFriends();
+    }
+  }, [showInviteModal]);
+
+  // Function to handle sending an invite
+  const handleSendInvite = async (friendId) => {
+    try {
+      const friendRef = doc(db, "users", friendId);
+      await updateDoc(friendRef, {
+        notifications: arrayUnion({
+          type: "invite",
+          roomCode: params.roomCode,
+          fromUser: user.uid,
+          timestamp: new Date().toISOString()
+        })
+      });
+      console.log("Invite sent to", friendId);
+    } catch (error) {
+      console.error("Error sending invite:", error);
+    }
   };
+
+  const handleCharacterSetup = () => setShowCharacterModal(true);
+
+  const handleCharacterSetupClose = () => setShowCharacterModal(false);
+
+  const handleInviteClose = () => setShowInviteModal(false);
 
   const handleCharacterSubmit = async (e) => {
     e.preventDefault();
@@ -217,6 +275,12 @@ export default function Lobby({ params }) {
                       </ListGroup.Item>
                     ))}
                   </ListGroup>
+
+                  <div className="mt-20">
+                    <Button variant="info" className="w-100" onClick={() => setShowInviteModal(true)}>
+                      Invite Friend
+                    </Button>
+                  </div>
 
                   <div className="mt-20">
                     <Button variant="secondary" className="w-100" onClick={handleCharacterSetup}>
@@ -291,6 +355,35 @@ export default function Lobby({ params }) {
           </form>
         </Modal.Body>
       </Modal>
+
+      {/* Friend Invite Modal */}
+      <Modal show={showInviteModal} onHide={handleInviteClose} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Invite a Friend</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {loading ? (
+            <p>Loading friends...</p>
+          ) : friends.length === 0 ? (
+            <p>No friends yet</p>
+          ) : (
+            <ListGroup>
+              {friendDetails.map((friend) => (
+                <ListGroup.Item key={friend.id} className="d-flex justify-content-between">
+                  {friend.username}
+                  <Button onClick={() => handleSendInvite(friend.id)}>Send Invite</Button>
+                </ListGroup.Item>
+              ))}
+            </ListGroup>
+          )}
+          <div className="mt-20 d-flex justify-content-end">
+            <Button variant="secondary" onClick={handleInviteClose}>
+              Close
+            </Button>
+          </div>
+        </Modal.Body>
+      </Modal>
+
     </Container>
   );
 }

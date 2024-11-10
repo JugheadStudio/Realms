@@ -1,21 +1,19 @@
-// src/app/utils/firebaseUsers.js
-
 import { db } from "../firebase/config";
 import { doc, setDoc, serverTimestamp, getDocs, collection, query, where } from "firebase/firestore";
 
-// Function to create user profile in Firestore with lowercase username
 export async function createUserProfile(user, username) {
   if (!user) return;
 
   try {
     await setDoc(doc(db, "users", user.uid), {
       email: user.email,
-      username: username.toLowerCase(), // Save username in lowercase
+      username: username.toLowerCase(),
       profilePicture: "",
       isAdmin: false,
       createdAt: serverTimestamp(),
       friends: [],
       friendRequests: [],
+      notfications: [],
       uid: user.uid,
     });
   } catch (error) {
@@ -24,7 +22,7 @@ export async function createUserProfile(user, username) {
   }
 }
 
-// Function to check if a username already exists, case-insensitively
+// Function to check if a username already exists, case-insensitive
 export async function isUsernameTaken(username) {
   const usernameQuery = query(
     collection(db, "users"),
@@ -32,5 +30,5 @@ export async function isUsernameTaken(username) {
   );
   const querySnapshot = await getDocs(usernameQuery);
 
-  return !querySnapshot.empty; // Returns true if username is taken
+  return !querySnapshot.empty;
 }

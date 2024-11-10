@@ -140,16 +140,10 @@ const FriendsModal = ({ show, onHide, userId }) => {
 							</ListGroup.Item>
 						))}
 					</ListGroup>
-
 				)}
 
 				<Form className="mt-3">
-					<Form.Control
-						type="text"
-						placeholder="Search users by username"
-						value={searchQuery}
-						onChange={handleSearch}
-					/>
+					<Form.Control type="text" placeholder="Search users by username" value={searchQuery} onChange={handleSearch} />
 				</Form>
 
 				{searchResults.length > 0 ? (
@@ -159,10 +153,7 @@ const FriendsModal = ({ show, onHide, userId }) => {
 							<Button variant="link" onClick={() => console.log("View Profile", result.uid)}>
 								View Profile
 							</Button>
-							<Button
-								variant="link"
-								onClick={() => handleAddFriend(result.uid, result.username)}
-							>
+							<Button variant="link" onClick={() => handleAddFriend(result.uid, result.username)}>
 								Add Friend
 							</Button>
 						</ListGroup.Item>
