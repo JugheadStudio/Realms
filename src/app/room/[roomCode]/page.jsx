@@ -13,15 +13,14 @@ export default function ChatLayout({ params }) {
   const [roomData, setRoomData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [usernames, setUsernames] = useState({});
-  const introGeneratedRef = useRef(false);
   const md = new MarkdownIt();
 
+  // Load room data
   useEffect(() => {
     const fetchRoomData = async () => {
       try {
         const roomRef = doc(db, "rooms", params.roomCode);
         const roomSnapshot = await getDoc(roomRef);
-
         if (roomSnapshot.exists()) {
           const data = roomSnapshot.data();
           setRoomData(data);
@@ -31,10 +30,10 @@ export default function ChatLayout({ params }) {
         console.error("Error fetching room data:", error);
       }
     };
-
     fetchRoomData();
   }, [params.roomCode]);
 
+  // Load usernames of players in the room
   useEffect(() => {
     if (roomData) {
       const fetchUsernames = async () => {
@@ -51,11 +50,11 @@ export default function ChatLayout({ params }) {
         }
         setUsernames(usernamesMap);
       };
-
       fetchUsernames();
     }
   }, [roomData]);
 
+  // Subscribe to room message updates in real-time
   useEffect(() => {
     if (!params.roomCode) return;
 
@@ -70,6 +69,7 @@ export default function ChatLayout({ params }) {
     return () => unsubscribe();
   }, [params.roomCode]);
 
+  // Handle sending a message
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (input.trim() === "") return;
@@ -107,38 +107,34 @@ export default function ChatLayout({ params }) {
       setMessages(prevMessages => [...prevMessages, { ...userMessage, username }]);
       setInput("");
 
+      // Send the user's message to OpenAI API for bot response
       const response = await axios.post('/api/openai', {
         message: input,
         roomData
       });
 
-      const botMessage = response.data;
+      const botMessage = {
+        userId: "bot",  // Or any identifier you use for the bot
+        content: response.data.content,  // Assuming response has the content in this format
+        role: "system",  // Set role to "system" for bot messages
+        timestamp: new Date().toISOString(),
+        username: "Dungeon Master",  // Bot's username
+      };
+
       setMessages(prevMessages => [...prevMessages, botMessage]);
 
+      // Save the user and bot messages to the database
       await saveMessagesToDatabase(userMessage, botMessage, currentPlayer.characterName);
     } catch (error) {
       console.error('Error sending message:', error);
     }
   };
 
-  const saveMessagesToDatabase = async (userMessage, botMessage, characterName) => {
+  const saveMessagesToDatabase = async (userMessage, botMessage) => {
     try {
       const roomRef = doc(db, "rooms", params.roomCode);
-      const roomSnapshot = await getDoc(roomRef);
-      if (!roomSnapshot.exists()) {
-        console.error("Room does not exist");
-        return;
-      }
-
-      const roomData = roomSnapshot.data();
-      const updatedMessages = [
-        ...roomData.messages,
-        { ...userMessage, role: "user", characterName },
-        { ...botMessage, role: "system" }
-      ];
-
       await updateDoc(roomRef, {
-        messages: updatedMessages,
+        messages: arrayUnion(userMessage, botMessage),
       });
     } catch (error) {
       console.error("Error saving messages to Firestore:", error);
@@ -152,24 +148,40 @@ export default function ChatLayout({ params }) {
           <p>No messages yet...</p>
         ) : (
           <div className="flex flex-col space-y-4">
-            {messages.map((message, index) => (
-              <div key={index} className={`p-4 rounded-lg ${message.role === 'user' ? 'bg-blue-500 text-white self-end' : 'bg-gray-800 self-start'}`}>
-                <strong>
-                  {message.characterName ? `${message.characterName} (${message.username || 'Unknown User'})` : 'Dungeon Master'}:
-                </strong>
-                {/* Render markdown content as HTML */}
-                <div
-                  dangerouslySetInnerHTML={{ __html: md.render(message.content) }}
-                  className="markdown-content"
-                />
+            {messages.map((message, index) => {
+              // Ensure roomData.players exists before accessing
+              const player = roomData?.players?.find(player => player.userId === message.userId);
 
-              </div>
-            ))}
+              const characterName = player ? player.characterName : 'Character';
+              const displayName = message.role === 'system'
+                ? 'Dungeon Master'
+                : `${characterName} (${message.username || 'Unknown User'})`;
+
+              return (
+                <div
+                  key={index}
+                  className={`p-4 rounded-lg ${message.role === 'user' ? 'bg-blue-500 text-white self-end' : 'bg-gray-800 self-start'}`}
+                >
+                  <strong>{displayName}</strong>
+                  <div
+                    dangerouslySetInnerHTML={{ __html: md.render(message.content) }}
+                    className="markdown-content"
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
+
       <form className="p-4 flex" onSubmit={handleSendMessage}>
-        <input className="flex-grow p-2 border text-black rounded-lg focus:outline-none focus:ring focus:ring-blue-400" type="text" value={input} placeholder="Type your message..." onChange={(e) => setInput(e.target.value)} />
+        <input
+          className="flex-grow p-2 border text-black rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+          type="text"
+          value={input}
+          placeholder="Type your message..."
+          onChange={(e) => setInput(e.target.value)}
+        />
         <button type="submit" className="ml-4 bg-blue-500 text-white px-4 py-2 rounded-lg">
           Send
         </button>

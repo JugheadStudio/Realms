@@ -271,7 +271,7 @@ hr {
   text-transform: uppercase;
 }
 
-.sidenav-links li:hover {
+.sidenav-links li a:hover {
   color: var(--accent2-2);
 }
 
