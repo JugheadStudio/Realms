@@ -5,6 +5,7 @@ import axios from 'axios';
 import { db } from "../../firebase/config";
 import { doc, getDoc, updateDoc, arrayUnion, onSnapshot } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import MarkdownIt from "markdown-it";
 
 export default function ChatLayout({ params }) {
   const [messages, setMessages] = useState([]);
@@ -13,13 +14,14 @@ export default function ChatLayout({ params }) {
   const [loading, setLoading] = useState(false);
   const [usernames, setUsernames] = useState({});
   const introGeneratedRef = useRef(false);
+  const md = new MarkdownIt();
 
   useEffect(() => {
     const fetchRoomData = async () => {
       try {
         const roomRef = doc(db, "rooms", params.roomCode);
         const roomSnapshot = await getDoc(roomRef);
-  
+
         if (roomSnapshot.exists()) {
           const data = roomSnapshot.data();
           setRoomData(data);
@@ -29,12 +31,11 @@ export default function ChatLayout({ params }) {
         console.error("Error fetching room data:", error);
       }
     };
-  
+
     fetchRoomData();
-  }, [params.roomCode]);  
+  }, [params.roomCode]);
 
   useEffect(() => {
-    // Fetch usernames for all players in the room
     if (roomData) {
       const fetchUsernames = async () => {
         const usernamesMap = {};
@@ -114,7 +115,6 @@ export default function ChatLayout({ params }) {
       const botMessage = response.data;
       setMessages(prevMessages => [...prevMessages, botMessage]);
 
-      // Pass the current player's character name to saveMessagesToDatabase
       await saveMessagesToDatabase(userMessage, botMessage, currentPlayer.characterName);
     } catch (error) {
       console.error('Error sending message:', error);
@@ -133,7 +133,7 @@ export default function ChatLayout({ params }) {
       const roomData = roomSnapshot.data();
       const updatedMessages = [
         ...roomData.messages,
-        { ...userMessage, role: "user", characterName }, // Use player.characterName here
+        { ...userMessage, role: "user", characterName },
         { ...botMessage, role: "system" }
       ];
 
@@ -144,7 +144,6 @@ export default function ChatLayout({ params }) {
       console.error("Error saving messages to Firestore:", error);
     }
   };
-
 
   return (
     <div className="flex flex-col h-100">
@@ -158,12 +157,16 @@ export default function ChatLayout({ params }) {
                 <strong>
                   {message.characterName ? `${message.characterName} (${message.username || 'Unknown User'})` : 'Dungeon Master'}:
                 </strong>
-                {message.content}
+                {/* Render markdown content as HTML */}
+                <div
+                  dangerouslySetInnerHTML={{ __html: md.render(message.content) }}
+                  className="markdown-content"
+                />
+
               </div>
             ))}
           </div>
         )}
-
       </div>
       <form className="p-4 flex" onSubmit={handleSendMessage}>
         <input className="flex-grow p-2 border text-black rounded-lg focus:outline-none focus:ring focus:ring-blue-400" type="text" value={input} placeholder="Type your message..." onChange={(e) => setInput(e.target.value)} />

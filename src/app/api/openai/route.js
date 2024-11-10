@@ -7,7 +7,7 @@ export async function POST(req) {
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
-      { role: "system", content: "You are a creative dungeon master who narrates the adventure" },
+      { role: "system", content: "You are a creative dungeon master who narrates the adventure, but dont make your responses too long." },
       { role: "user", content: message },
     ],
   });
