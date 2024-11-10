@@ -12,6 +12,8 @@ import { Container, Row, Col, Button, ListGroup, Modal, Form } from "react-boots
 import logo from '../assets/realms-logo.svg';
 import profileIcon from '../assets/user-round.svg';
 import notificationsIcon from '../assets/notifications.svg';
+import { format } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function SideNav() {
   const router = useRouter();
@@ -65,32 +67,24 @@ export default function SideNav() {
     setShowNotifications((prev) => !prev);
   };
 
-  // Inside the SideNav component
-
   const handleJoinRoom = async (roomCode, notificationIndex) => {
-    // Redirect to the lobby page
     router.push(`/lobby/${roomCode}`);
 
-    // Close the notification dropdown
     setShowNotifications(false);
 
-    // Remove the notification from the database
     const user = auth.currentUser;
     if (user) {
       const userDocRef = doc(db, "users", user.uid);
 
       try {
-        // Get the current notifications array
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           const notifications = userDoc.data().notifications || [];
 
-          // Filter out the notification by index or ID
           const updatedNotifications = notifications.filter(
             (_, index) => index !== notificationIndex
           );
 
-          // Update Firestore with the modified notifications array
           await updateDoc(userDocRef, { notifications: updatedNotifications });
         }
       } catch (error) {
@@ -146,8 +140,10 @@ export default function SideNav() {
                           <p className="text-xs">
                             New invite from <strong>{notification.fromUserName}</strong>
                           </p>
-                          <p className="text-xs">
-                            {notification.timestamp}
+                          <p className="text-xs notification-timestamp">
+                            {notification.timestamp
+                              ? `${formatDistanceToNow(new Date(notification.timestamp))} ago`
+                              : 'Invalid Date'}
                           </p>
                         </div>
                         <div>

@@ -240,10 +240,14 @@ hr {
 }
 
 .notification-item {
-  margin: 5px 0;
   align-self: center;
   border-bottom: 1px solid var(--realms-text-dark-grey);
   padding: 10px 20px;
+  font-weight: 200;
+}
+
+.notification-item strong {
+  font-weight: 700;
 }
 
 .notification-item:last-child {
@@ -252,6 +256,10 @@ hr {
 
 .notification-item div {
   align-self: center;
+}
+
+.notification-timestamp {
+  color: var(--realms-text-dark-grey);
 }
 
 /* --------------- lobby Page --------------- */
