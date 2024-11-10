@@ -34,7 +34,7 @@ export default function ChatLayout({ params }) {
   }, [params.roomCode]);  
 
   useEffect(() => {
-    // Fetch usernames for all players in the room when the roomData is loaded
+    // Fetch usernames for all players in the room
     if (roomData) {
       const fetchUsernames = async () => {
         const usernamesMap = {};
@@ -58,7 +58,6 @@ export default function ChatLayout({ params }) {
   useEffect(() => {
     if (!params.roomCode) return;
 
-    // Real-time listener to track changes in the room's messages
     const roomRef = doc(db, "rooms", params.roomCode);
     const unsubscribe = onSnapshot(roomRef, (roomSnapshot) => {
       if (roomSnapshot.exists()) {
@@ -67,7 +66,6 @@ export default function ChatLayout({ params }) {
       }
     });
 
-    // Cleanup the listener when the component is unmounted
     return () => unsubscribe();
   }, [params.roomCode]);
 
@@ -156,7 +154,7 @@ export default function ChatLayout({ params }) {
         ) : (
           <div className="flex flex-col space-y-4">
             {messages.map((message, index) => (
-              <div key={index} className={`p-4 rounded-lg ${message.role === 'user' ? 'bg-blue-500 text-white self-end' : 'bg-gray-300 self-start'}`}>
+              <div key={index} className={`p-4 rounded-lg ${message.role === 'user' ? 'bg-blue-500 text-white self-end' : 'bg-gray-800 self-start'}`}>
                 <strong>
                   {message.characterName ? `${message.characterName} (${message.username || 'Unknown User'})` : 'Dungeon Master'}:
                 </strong>

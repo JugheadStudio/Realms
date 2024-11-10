@@ -38,20 +38,18 @@ export default function Lobby({ params }) {
     return () => unsubscribe();
   }, [params.roomCode]);
 
-  // Sync local readiness state with room data on page load or when room data changes
   useEffect(() => {
     if (roomData && user) {
       const currentPlayer = roomData.players.find((player) => player.userId === user.uid);
       if (currentPlayer) {
-        setIsReady(currentPlayer.isReady); // Sync with player's readiness from DB
+        setIsReady(currentPlayer.isReady);
       }
     }
   }, [roomData, user]);
 
   const handleReadyToggle = async () => {
-    const updatedReadyState = !isReady; // Toggle the ready state
+    const updatedReadyState = !isReady;
 
-    // Update the readiness state in the database
     const updatedPlayers = roomData.players.map((player) =>
       player.userId === user.uid ? { ...player, isReady: updatedReadyState } : player
     );
@@ -60,13 +58,13 @@ export default function Lobby({ params }) {
       await updateDoc(doc(db, "rooms", roomData.id), {
         players: updatedPlayers,
       });
-      setIsReady(updatedReadyState); // Update local state for UI consistency
+      setIsReady(updatedReadyState);
     } catch (error) {
       console.error("Error updating readiness:", error);
     }
   };
 
-  // Add player to room when they join (if not already added)
+  // Add player to room when they join
   useEffect(() => {
     if (user && roomData && !roomData.players.some((player) => player.userId === user.uid)) {
       const fetchAndAddPlayer = async () => {
@@ -93,10 +91,15 @@ export default function Lobby({ params }) {
   const allPlayersReady = roomData && roomData.players.every(player => player.isReady);
 
   const handleStartAdventure = async () => {
-    try {
-      setLoading(true); // Set loading to true before the API call
+    if (!roomData) return;
 
-      const playerDetails = roomData.players.map(player => `${player.username} (Character: ${player.characterName}, Class: ${player.characterType}, BackStory: ${player.characterBackstory})`).join(", ");
+    try {
+      setLoading(true);
+
+      // Generate the intro message
+      const playerDetails = roomData.players
+        .map(player => `${player.username} (Character: ${player.characterName}, Class: ${player.characterType}, BackStory: ${player.characterBackstory})`)
+        .join(", ");
       const prompt = `
         You are a creative dungeon master.
         The title of the adventure is: ${roomData.adventureTitle},
@@ -111,8 +114,7 @@ export default function Lobby({ params }) {
       const response = await axios.post('/api/openai', { message: prompt });
       const introMessage = response.data.content;
 
-      // Store the intro message in Firestore
-      await updateDoc(doc(db, "rooms", params.roomCode), {
+      await updateDoc(doc(db, "rooms", roomData.id), {
         messages: arrayUnion({
           role: "system",
           content: introMessage,
@@ -120,10 +122,21 @@ export default function Lobby({ params }) {
         })
       });
 
-      // Redirect to the chat page after generating the intro message
+      // After the intro message is added, update the players' status and set isStarted to true
+      const updatedPlayers = roomData.players.map((player) => ({
+        ...player,
+        status: "inAdventure",
+      }));
+
+      await updateDoc(doc(db, "rooms", roomData.id), {
+        players: updatedPlayers,
+        isStarted: true,
+      });
+
+      // Redirect to the room after the intro message and room update is done
       router.push(`/room/${params.roomCode}`);
     } catch (error) {
-      console.error('Error generating introduction:', error);
+      console.error('Error starting the adventure:', error);
     } finally {
       setLoading(false);
     }
@@ -147,7 +160,6 @@ export default function Lobby({ params }) {
     return () => unsubscribe();
   }, [roomData, router]);
 
-  // Fetch friend data
   const fetchFriends = async () => {
     if (!user) return;
 
@@ -161,7 +173,6 @@ export default function Lobby({ params }) {
         const friendsList = userSnap.data().friends || [];
         setFriends(friendsList);
 
-        // Retrieve friend details for each friend
         const friendPromises = friendsList.map(async (friendId) => {
           const friendRef = doc(db, "users", friendId);
           const friendSnap = await getDoc(friendRef);
@@ -172,7 +183,7 @@ export default function Lobby({ params }) {
         });
 
         const friendDetails = await Promise.all(friendPromises);
-        setFriendDetails(friendDetails.filter(Boolean)); // Filter out null values
+        setFriendDetails(friendDetails.filter(Boolean));
       }
     } catch (error) {
       console.error("Error fetching friends:", error);
@@ -187,7 +198,7 @@ export default function Lobby({ params }) {
     }
   }, [showInviteModal]);
 
-  // Function to handle sending an invite
+  // Function to handle sending an invites to friends
   const handleSendInvite = async (friendId) => {
     try {
       const friendRef = doc(db, "users", friendId);
@@ -243,7 +254,6 @@ export default function Lobby({ params }) {
     navigator.clipboard.writeText(params.roomCode).then(() => {
       setCopied(true);
 
-      // Reset the copied status after a brief moment (e.g., 2 seconds)
       setTimeout(() => {
         setCopied(false);
       }, 2000);
@@ -268,23 +278,14 @@ export default function Lobby({ params }) {
                   <div>
                     <p>Room <strong>Code</strong>
                       {copied && (
-                        <span
-                          style={{
-                            marginLeft: "8px",
-                            color: "black",
-                          }}
-                        >
+                        <span style={{marginLeft: "8px", color: "black",}}>
                           Code Copied!
                         </span>
                       )}
                     </p>
                   </div>
                   <div>
-                    <div
-                      className="roomcode"
-                      onClick={handleCopy}
-                      style={{ cursor: "pointer", display: "inline-flex", alignItems: "center" }}
-                    >
+                    <div className="roomcode" onClick={handleCopy} style={{ cursor: "pointer", display: "inline-flex", alignItems: "center" }} >
                       {params.roomCode.split("").map((char, index) => (
                         <span key={index}>{char}</span>
                       ))}
