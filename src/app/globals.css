@@ -461,6 +461,66 @@ hr {
 
 /* --------------- Room Page --------------- */
 
+.room-message-container {
+  overflow-y: auto;
+  height: 500px;
+  padding-right: 20px;
+}
+
+.room-message-input {
+  border-radius: 10px;
+  padding: 10px 20px;
+  background-color: transparent;
+  border: 1px solid var(--realms-text-dark-grey);
+}
+
+.room-message-input:focus {
+  border: 1px solid var(--accent2);
+}
+
+.room-message-input::placeholder {
+  color: var(--realms-text-dark-grey);
+}
+
+input:focus-visible {
+  outline-offset: 0px;
+  outline: none;
+}
+
+.bot-message {
+  background-color: transparent;
+  border: 1px solid var(--realms-text-dark-grey);
+  color: var(--realms-text-light-grey);
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.player-message {
+  background-color: var(--accent1);
+  color: var(--background);
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.room-send-button {
+  background-color: var(--accent2);
+  color: var(--background);
+  padding: 10px 20px;
+  border-radius: 10px;
+  margin-left: 20px;
+}
+
+.audio-button {
+  background-color: var(--accent1);
+  color: var(--background);
+  padding: 5px 15px;
+  font-size: 14px;
+  border-radius: 5px;
+  margin-top: 20px;
+}
+
 .markdown-content h1 {
   font-size: 1.5rem;
   font-weight: bold;
