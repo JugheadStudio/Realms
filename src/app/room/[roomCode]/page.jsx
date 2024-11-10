@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { db } from "../../firebase/config";
 import { doc, getDoc, updateDoc, arrayUnion, onSnapshot } from "firebase/firestore";
@@ -112,21 +112,21 @@ export default function ChatLayout({ params }) {
         roomData
       });
 
+      const audioContent = await handleTTS(response.data.content); // Store audio content for playback
+
       const botMessage = {
         userId: "bot",  // Or any identifier you use for the bot
         content: response.data.content,  // Assuming response has the content in this format
         role: "system",  // Set role to "system" for bot messages
         timestamp: new Date().toISOString(),
         username: "Dungeon Master",  // Bot's username
+        audioContent, // Include the audio content in the bot message
       };
 
       setMessages(prevMessages => [...prevMessages, botMessage]);
 
       // Save the user and bot messages to the database
-      await saveMessagesToDatabase(userMessage, botMessage, currentPlayer.characterName);
-
-      // Send the bot message to the TTS API and play audio
-      await handleTTS(botMessage.content);
+      await saveMessagesToDatabase(userMessage, botMessage);
 
     } catch (error) {
       console.error('Error sending message:', error);
@@ -136,15 +136,15 @@ export default function ChatLayout({ params }) {
   const handleTTS = async (text) => {
     try {
       const response = await axios.post('/tts', { text });
-  
-      // Convert the base64 response to audio and play it
       const audioContent = response.data.audioContent;
-      const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
-      audio.play();
+
+      // Return the audio content for storage in the message
+      return audioContent;
     } catch (error) {
       console.error('Error with TTS:', error);
+      return null;
     }
-  };  
+  };
 
   const saveMessagesToDatabase = async (userMessage, botMessage) => {
     try {
@@ -155,6 +155,11 @@ export default function ChatLayout({ params }) {
     } catch (error) {
       console.error("Error saving messages to Firestore:", error);
     }
+  };
+
+  const playAudio = (audioContent) => {
+    const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+    audio.play();
   };
 
   return (
@@ -183,6 +188,14 @@ export default function ChatLayout({ params }) {
                     dangerouslySetInnerHTML={{ __html: md.render(message.content) }}
                     className="markdown-content"
                   />
+                  {message.audioContent && message.role === 'system' && (
+                    <button
+                      onClick={() => playAudio(message.audioContent)}
+                      className="mt-2 bg-blue-500 text-white px-4 py-2 rounded-lg"
+                    >
+                      Play Audio
+                    </button>
+                  )}
                 </div>
               );
             })}

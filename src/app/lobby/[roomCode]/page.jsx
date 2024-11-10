@@ -101,7 +101,7 @@ export default function Lobby({ params }) {
         .map(player => `${player.username} (Character: ${player.characterName}, Class: ${player.characterType}, BackStory: ${player.characterBackstory})`)
         .join(", ");
       const prompt = `
-        You are a creative dungeon master.
+        You are a creative dungeon master. Don't add markdown styling to your response.
         The title of the adventure is: ${roomData.adventureTitle},
         Introduce the adventure for the following players:
         ${playerDetails}. 
@@ -111,13 +111,22 @@ export default function Lobby({ params }) {
         Plot Line: ${roomData.plot || 'No specific plot line.'},
       `;
 
+      // Send the prompt to the OpenAI API
       const response = await axios.post('/api/openai', { message: prompt });
       const introMessage = response.data.content;
 
+      // Send the intro message to the TTS API to get the audio
+      const ttsResponse = await axios.post('/tts', { text: introMessage });
+
+      // Get the audio content from the TTS response
+      const audioContent = ttsResponse.data.audioContent;
+
+      // Add the intro message and the audio to the room's messages
       await updateDoc(doc(db, "rooms", roomData.id), {
         messages: arrayUnion({
           role: "system",
           content: introMessage,
+          audioContent: audioContent, // Include the audio content
           timestamp: new Date().toISOString()
         })
       });
@@ -278,7 +287,7 @@ export default function Lobby({ params }) {
                   <div>
                     <p>Room <strong>Code</strong>
                       {copied && (
-                        <span style={{marginLeft: "8px", color: "black",}}>
+                        <span style={{ marginLeft: "8px", color: "black", }}>
                           Code Copied!
                         </span>
                       )}
