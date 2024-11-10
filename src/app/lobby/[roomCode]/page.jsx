@@ -19,6 +19,7 @@ export default function Lobby({ params }) {
   const [friends, setFriends] = useState([]);
   const [friendDetails, setFriendDetails] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
 
@@ -124,7 +125,7 @@ export default function Lobby({ params }) {
     } catch (error) {
       console.error('Error generating introduction:', error);
     } finally {
-      setLoading(false); // Set loading to false after the API call finishes
+      setLoading(false);
     }
   };
 
@@ -238,6 +239,19 @@ export default function Lobby({ params }) {
     }
   };
 
+  const handleCopy = () => {
+    navigator.clipboard.writeText(params.roomCode).then(() => {
+      setCopied(true);
+
+      // Reset the copied status after a brief moment (e.g., 2 seconds)
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    }).catch(err => {
+      console.error("Failed to copy: ", err);
+    });
+  };
+
   return (
     <Container className="mt-5">
       <Row className="justify-content-center text-white">
@@ -252,12 +266,29 @@ export default function Lobby({ params }) {
 
                 <div className="lobby-code">
                   <div>
-                    <p>Room <strong>Code</strong></p>
+                    <p>Room <strong>Code</strong>
+                      {copied && (
+                        <span
+                          style={{
+                            marginLeft: "8px",
+                            color: "black",
+                          }}
+                        >
+                          Code Copied!
+                        </span>
+                      )}
+                    </p>
                   </div>
-                  <div className="roomcode">
-                    {params.roomCode.split("").map((char, index) => (
-                      <span key={index}>{char}</span>
-                    ))}
+                  <div>
+                    <div
+                      className="roomcode"
+                      onClick={handleCopy}
+                      style={{ cursor: "pointer", display: "inline-flex", alignItems: "center" }}
+                    >
+                      {params.roomCode.split("").map((char, index) => (
+                        <span key={index}>{char}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

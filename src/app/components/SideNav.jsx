@@ -7,20 +7,21 @@ import { auth, db } from "../firebase/config";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, onSnapshot, updateDoc, arrayRemove } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { Container, Row, Col, Button, ListGroup, Modal, Form } from "react-bootstrap";
+import { Button } from "react-bootstrap";
 
 import logo from '../assets/realms-logo.svg';
-import profileIcon from '../assets/user-round.svg';
+import profileIcon from '../assets/user-round.svg'; // Default SVG icon
 import notificationsIcon from '../assets/notifications.svg';
-import { format } from 'date-fns';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function SideNav() {
   const router = useRouter();
   const [username, setUsername] = useState(null);
+  const [profilePicture, setProfilePicture] = useState(null);
   const [notificationCount, setNotificationCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [user, setUser] = useState(null);
 
   const getUsernameByUID = async (uid) => {
     const userDoc = await getDoc(doc(db, "users", uid));
@@ -30,9 +31,11 @@ export default function SideNav() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        setUser(user);
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
           setUsername(userDoc.data().username);
+          setProfilePicture(userDoc.data().profilePicture || null);
         }
 
         const notificationsRef = doc(db, "users", user.uid);
@@ -53,6 +56,10 @@ export default function SideNav() {
         });
 
         return () => unsubscribeNotifications();
+      } else {
+        setUser(null);
+        setUsername(null);
+        setProfilePicture(null);
       }
     });
     return () => unsubscribe();
@@ -69,22 +76,15 @@ export default function SideNav() {
 
   const handleJoinRoom = async (roomCode, notificationIndex) => {
     router.push(`/lobby/${roomCode}`);
-
     setShowNotifications(false);
 
-    const user = auth.currentUser;
     if (user) {
       const userDocRef = doc(db, "users", user.uid);
-
       try {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           const notifications = userDoc.data().notifications || [];
-
-          const updatedNotifications = notifications.filter(
-            (_, index) => index !== notificationIndex
-          );
-
+          const updatedNotifications = notifications.filter((_, index) => index !== notificationIndex);
           await updateDoc(userDocRef, { notifications: updatedNotifications });
         }
       } catch (error) {
@@ -101,92 +101,94 @@ export default function SideNav() {
 
       <hr />
 
+      {/* Profile or Login Button */}
       <div className="d-flex justify-content-between navbar-user">
-        <div className="flex items-center gap-3">
-          <span>
-            <Image src={profileIcon} alt="Profile picture" width={30} />
-          </span>
-          <div className="flex flex-col">
-            <p className="text-md name">{username || "Loading..."}</p>
-            <p className="text-sm type">Free User</p>
-          </div>
-        </div>
-        <div>
-          <span className="relative">
-            <Image
-              src={notificationsIcon}
-              alt="Notifications Icon"
-              width={30}
-              onClick={toggleNotifications}
-              className="cursor-pointer"
-            />
-            {notificationCount > 0 && (
-              <span className="notifications-count bg-red-500 rounded-full text-xs w-5 h-5 flex items-center justify-center">
-                {notificationCount}
+        {user ? (
+          <>
+            <Link href={`/profile/${username}`} className="flex items-center gap-3">
+              <span>
+                <Image src={profilePicture ? profilePicture : profileIcon} alt="Profile picture" width={30} height={30}/>
               </span>
-            )}
-
-            {showNotifications && (
-              <div className="notifications-dropdown text-white shadow-lg z-10">
-                <div className="notification-header">
-                  <h3 className="text-sm font-semibold">Notifications</h3>
-                </div>
-                <hr />
-                <div className="notifications-item-container max-h-64 overflow-y-auto">
-                  {notifications.length > 0 ? (
-                    notifications.map((notification, index) => (
-                      <div key={index} className="notification-item d-flex justify-content-between">
-                        <div>
-                          <p className="text-xs">
-                            New invite from <strong>{notification.fromUserName}</strong>
-                          </p>
-                          <p className="text-xs notification-timestamp">
-                            {notification.timestamp
-                              ? `${formatDistanceToNow(new Date(notification.timestamp))} ago`
-                              : 'Invalid Date'}
-                          </p>
-                        </div>
-                        <div>
-                          <Button variant="join" onClick={() => handleJoinRoom(notification.roomCode, index)} className="mt-1 text-xs">
-                            Join
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-xs text-gray-400">No new notifications</p>
-                  )}
-                </div>
+              <div className="flex flex-col">
+                <p className="text-md name">{username || "Loading..."}</p>
+                <p className="text-sm type">Free User</p>
               </div>
-            )}
-          </span>
-        </div>
+            </Link>
+
+            <div className="flex items-center">
+              <span className="relative">
+                <Image src={notificationsIcon} alt="Notifications Icon" width={30} onClick={toggleNotifications} className="cursor-pointer"/>
+                {notificationCount > 0 && (
+                  <span className="notifications-count bg-red-500 rounded-full text-xs w-5 h-5 flex justify-center">
+                    {notificationCount}
+                  </span>
+                )}
+
+                {showNotifications && (
+                  <div className="notifications-dropdown text-white shadow-lg z-10">
+                    <div className="notification-header">
+                      <h3 className="text-sm font-semibold">Notifications</h3>
+                    </div>
+                    <hr />
+                    <div className="notifications-item-container max-h-64 overflow-y-auto">
+                      {notifications.length > 0 ? (
+                        notifications.map((notification, index) => (
+                          <div key={index} className="notification-item d-flex justify-content-between">
+                            <div>
+                              <p className="text-xs">
+                                New invite from <strong>{notification.fromUserName}</strong>
+                              </p>
+                              <p className="text-xs notification-timestamp">
+                                {notification.timestamp
+                                  ? `${formatDistanceToNow(new Date(notification.timestamp))} ago`
+                                  : 'Invalid Date'}
+                              </p>
+                            </div>
+                            <div>
+                              <Button variant="join" onClick={() => handleJoinRoom(notification.roomCode, index)} className="mt-1 text-xs">
+                                Join
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-gray-400">No new notifications</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </span>
+            </div>
+          </>
+        ) : (
+          <div>
+            <Link href="/login">
+              <Button variant="primary" className="w-full text-white">
+                Login
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
 
       <hr />
       <nav className="mt-10">
-        <ul>
-          <li className="mb-6">
+        <ul className="sidenav-links">
+          <li>
             <Link href="/">HOME</Link>
           </li>
           <li className="mb-6">
             <Link href="/discover">DISCOVER</Link>
           </li>
           <li className="mb-6">
-            {username && <Link href={`/profile/${username}`}>MY PROFILE</Link>}
-          </li>
-          <li className="mb-6">
-            <Link href="/room">Room</Link>
-          </li>
-          <li className="mb-6">
-            <Link href="/login">Login</Link>
+            {user && (
+              <button onClick={handleLogout} className="mt-2 text-red-500">
+                Log Out
+              </button>
+            )}
           </li>
         </ul>
       </nav>
-
-      <button onClick={handleLogout} className="mt-10 text-red-500">
-        Log Out
-      </button>
     </div>
   );
 }

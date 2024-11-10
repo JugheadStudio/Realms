@@ -262,6 +262,25 @@ hr {
   color: var(--realms-text-dark-grey);
 }
 
+.sidenav-links li {
+  width: 100%;
+  padding: 10px 25px;
+  color: var(--realms-text-grey);
+  font-size: 14px;
+  font-weight: 200;
+  text-transform: uppercase;
+}
+
+.sidenav-links li:hover {
+  color: var(--accent2-2);
+}
+
+.sidenav-links li button {
+  font-size: 14px;
+  font-weight: 200;
+  text-transform: uppercase;
+}
+
 /* --------------- lobby Page --------------- */
 
 .lobby-card {
